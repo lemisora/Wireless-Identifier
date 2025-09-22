@@ -1,0 +1,36 @@
+# Devenv
+.devenv*
+devenv.local.nix
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
+
+# Laravel
+/vendor
+/node_modules
+.env
+.env.backup
+/public/hot
+/public/storage
+/storage/*.key
+/bootstrap/cache/
+/storage/app/public/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+/storage/logs/
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# IDE and OS specific
+.idea/
+.vscode/
+.DS_Store
