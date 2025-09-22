@@ -13,5 +13,7 @@
     <body>
         {{-- Aquí es donde se renderizará el contenido de tus componentes --}}
         {{ $slot }}
+        
+        @stack('scripts')   {{-- Para scripts personalizados --}}
     </body>
 </html>
