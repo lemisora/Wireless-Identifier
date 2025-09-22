@@ -15,9 +15,9 @@
   # https://devenv.sh/languages/
   languages.php = {
     enable = true;
-    package = pkgs.php82;
+    package = pkgs.php83;
     packages = {
-      composer = pkgs.php82Packages.composer;
+      composer = pkgs.php83Packages.composer;
     };
 
     extensions = with pkgs.php82Extensions; [
@@ -37,7 +37,7 @@
     };
     npm = {
       enable = true;
-    }
+    };
   };
 
   services.mysql = {
