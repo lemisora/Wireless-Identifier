@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Lector RFID con Web Serial</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; }
+    #status { padding: 20px; font-size: 1.5em; font-weight: bold; border-radius: 8px; margin-top: 20px; }
+    .permitido { background-color: #4CAF50; color: white; }
+    .denegado { background-color: #f44336; color: white; }
+    .listo { background-color: #008CBA; color: white; }
+    .esperando { background-color: #e7e7e7; color: black; }
+  </style>
+</head>
+<body>
+  <h1>Lector de Tarjetas RFID</h1>
+  <button id="connect">Conectar Dispositivo</button>
+  
+  <div id="status" class="esperando">Esperando conexión...</div>
+  <p>Último UID escaneado: <code id="uid">-</code></p>
+  
+  <script>
+  const connectButton = document.getElementById('connect');
+      const statusDiv = document.getElementById('status');
+      const uidCode = document.getElementById('uid');
+  
+      let port;
+  
+      connectButton.addEventListener('click', async () => {
+        try {
+          port = await navigator.serial.requestPort({
+            filters: [ { usbVendorId: 0x10C4 }, { usbVendorId: 0x1A86 } ]
+          });
+          await port.open({ baudRate: 115200 });
+          
+          statusDiv.textContent = "Dispositivo conectado. Escanea una tarjeta...";
+          statusDiv.className = 'listo';
+  
+          const decoder = new TextDecoderStream();
+          port.readable.pipeTo(decoder.writable);
+          const reader = decoder.readable.getReader();
+  
+          let lineBuffer = '';
+  
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+              reader.releaseLock();
+              break;
+            }
+            
+            lineBuffer += value;
+            
+            // --- LÍNEA DE DEPURACIÓN ---
+            // Nos mostrará cómo va creciendo el búfer con cada trozo que llega.
+            console.log("Buffer actual:", lineBuffer); 
+  
+            let newlineIndex;
+            // El bucle de abajo SÓLO se ejecutará cuando el búfer contenga un salto de línea '\n'
+            while ((newlineIndex = lineBuffer.indexOf('\n')) !== -1) {
+              const line = lineBuffer.slice(0, newlineIndex).trim();
+              lineBuffer = lineBuffer.slice(newlineIndex + 1);
+  
+              if (line) {
+                console.log("Línea completa encontrada. Intentando parsear:", line); // Más depuración
+                try {
+                  const data = JSON.parse(line);
+                  
+                  uidCode.textContent = data.uid;
+                  statusDiv.textContent = `Estado: ${data.status}`;
+                  
+                  statusDiv.className = '';
+                  if (data.status === 'PERMITIDO') {
+                    statusDiv.classList.add('permitido');
+                  } else if (data.status === 'DENEGADO') {
+                    statusDiv.classList.add('denegado');
+                  } else {
+                    statusDiv.classList.add('listo');
+                  }
+                } catch (e) {
+                  console.error("Error al parsear JSON:", e);
+                  console.log("La línea que causó el error fue:", line);
+                }
+              }
+            }
+          }
+  
+        } catch (err) {
+          console.error("Error de conexión:", err);
+          statusDiv.textContent = "Error: " + err.message;
+          statusDiv.className = 'denegado';
+        }
+      });
+  </script>
+</body>
+</html>
