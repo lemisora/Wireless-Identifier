@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cards', function (Blueprint $table) {
-            $table->id();   // Id de la tarjeta
-            $table->string('uid')->unique(); // UID de la tarjeta
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();   // Id del usuario
+            $table->string('nombre_usuario'); // Nombre del usuario
+            $table->foreignId('card_id')->nullable()->unique()->constrained('cards');   // Tarjeta que le pertenece
+            $table->string('password');
             $table->timestamps();   // Tiempo de añadido
         });
     }
@@ -23,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cards');
+        Schema::dropIfExists('users');
     }
 };
