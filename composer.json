@@ -1,0 +1,7 @@
+{
+    "require": {
+        "laravel/framework": "^12.30",
+        "laravel/laravel": "^12.4",
+        "laravel/installer": "^5.17"
+    }
+}
