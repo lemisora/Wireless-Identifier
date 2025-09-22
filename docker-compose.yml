@@ -1,0 +1,8 @@
+services:
+  apache:
+    image: httpd:latest  # Usa la imagen oficial de Apache httpd
+    container_name: mi_servidor_apache
+    ports:
+      - "8081:80"  # Mapea el puerto 8081 de tu máquina al 80 del contenedor
+    volumes:
+      - ./public:/usr/local/apache2/htdocs/  # Monta tu directorio local en el directorio web del contenedor

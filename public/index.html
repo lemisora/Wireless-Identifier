@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Web Serial con ESP32</title>
+</head>
+<body>
+  <h1>Comunicación Serial en la Web</h1>
+  <button id="connect">Conectar dispositivo</button>
+  <pre id="output"></pre>
+
+  <script>
+    const connectButton = document.getElementById('connect');
+    const output = document.getElementById('output');
+
+    let port, reader;
+
+    connectButton.addEventListener('click', async () => {
+      try {
+        // Pedir al usuario que seleccione el puerto
+        port = await navigator.serial.requestPort({
+          filters: [
+            { usbVendorId: 0x2341 }, // Arduino
+            { usbVendorId: 0x10C4 }, // Ejemplo: CP2102 (ESP32)
+            { usbVendorId: 0x1A86 }  // Ejemplo: CH340 (ESP32 barato)
+          ]
+        });
+
+        // Abrir el puerto
+        await port.open({ baudRate: 115200 });
+
+        // Leer datos del puerto
+        const decoder = new TextDecoderStream();
+        const inputDone = port.readable.pipeTo(decoder.writable);
+        reader = decoder.readable.getReader();
+
+        output.innerText += " Conectado\n";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          output.innerText += value; // Mostrar lo que llega 
+        }
+      } catch (err) {
+        console.error("Error:", err);
+        output.innerText += " Error: " + err + "\n";
+      }
+    });
+  </script>
+</body>
+</html>
