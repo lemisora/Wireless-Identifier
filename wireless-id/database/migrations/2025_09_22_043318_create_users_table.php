@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();   // Id del usuario
-            $table->string('nombre_usuario'); // Nombre del usuario
+            $table->string('name'); // Nombre del usuario
             $table->foreignId('card_id')->nullable()->unique()->constrained('cards');   // Tarjeta que le pertenece
             $table->string('password');
             $table->timestamps();   // Tiempo de añadido

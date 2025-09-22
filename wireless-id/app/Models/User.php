@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -15,7 +16,7 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'nombre_usuario',
+        'name',
         'password',
         'card_id',
     ];
@@ -32,7 +33,7 @@ class User extends Authenticatable
     /**
      * Define la relación: Un Usuario pertenece a una Tarjeta.
      */
-    public function card()
+    public function card() : BelongsTo
     {
         return $this->belongsTo(Card::class);
     }
