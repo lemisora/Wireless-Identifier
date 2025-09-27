@@ -22,19 +22,26 @@ class AccessController extends Controller
         $uid = $validated['uid'];
         
         // Acceder a la base de datos
-        $card = Card::where('uid', $uid)->with('user')->first();
+        $card = Card::where('uid', $validated['uid'])->with('user')->first();
         
-        if($card && $card->user){
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Acceso permitido',
-            ]);
-        }else{
-            return response()->json([
-                'status' => 'denied',
-                'message' => 'Acceso denegado: sin usuario asociado',
-            ]);
-        }
+        if ($card && $card->user) {
+                // Si la tarjeta y el usuario existen ---
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Acceso Permitido',
+                    'user_name' => $card->user->name,
+                ]); // Por defecto, esto envía un código 200 OK, lo cual es correcto.
+        
+            } else {
+                // Si la tarjeta no fue encontrada o sin usuario ---
+                $errorMessage = $card ? 'no tiene usuario asociado' : 'no está registrada';
+                
+                // DEVOLVEMOS UN CÓDIGO 404 NOT FOUND
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'La tarjeta ' . $errorMessage,
+                ], 404);
+            }
     }
     
     /**
@@ -72,16 +79,26 @@ class AccessController extends Controller
             // Busca la tarjeta por UID, y si no existe, la crea.
             $card = Card::firstOrCreate(['uid' => $validated['uid']]);
     
-            // Busca al usuario
-            $user = User::find($validated['user_id']);
-    
-            // Asocia la tarjeta con el usuario y guarda
-            $user->card_id = $card->id;
-            $user->save();
-    
+            $previousUser = User::where('card_id', $card->id)
+                                    ->where('id', '!=', $validated['user_id'])
+                                    ->first();
+            
+            $reassignedMessage = "";
+            if ($previousUser) {
+                // Si se encontró un usuario anterior, se le quita la tarjeta.
+                $previousUser->card_id = null;
+                $previousUser->save();
+                $reassignedMessage = " La tarjeta ha sido reasignada desde el usuario '{$previousUser->name}'.";
+            }
+            
+            // Asigna la tarjeta al nuevo usuario.
+            $newUser = User::find($validated['user_id']);
+            $newUser->card_id = $card->id;
+            $newUser->save();
+            
             return response()->json([
                 'status' => 'success',
-                'message' => "Tarjeta {$card->uid} asignada a {$user->name} exitosamente.",
+                'message' => "Tarjeta {$card->uid} asignada a {$newUser->name}." . $reassignedMessage,
             ]);
         }
 }
