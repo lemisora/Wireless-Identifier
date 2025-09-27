@@ -2,25 +2,18 @@
 #include <MFRC522.h>
 #include <ArduinoJson.h>
 
-// --- PINES Y CONFIGURACIÓN RFID ---
+// --- PINES ---
 #define SS_PIN 5
 #define RST_PIN 22
 #define LED_VERDE 2
-#define LED_ROJO 4 // Este LED será usado por el panel web y la lógica RFID.
+#define LED_ROJO 4
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 
-// --- SECCIÓN DE UIDS AUTORIZADOS ---
-#define NUM_TARJETAS_AUTORIZADAS 2
-#define LONGITUD_MAX_UID 7
-byte UIDS_AUTORIZADOS[NUM_TARJETAS_AUTORIZADAS][LONGITUD_MAX_UID] = {
-  {0xA6, 0x39, 0x8E, 0xF7, 0x00, 0x00, 0x00},
-  {0x00, 0x05, 0x00, 0x03, 0x7A, 0x53, 0x00}
-};
-
-// --- VARIABLES GLOBALES PARA EL PANEL WEB ---
-String savedUser = "Nadie";
+// --- VARIABLES GLOBALES ---
 bool enrollModeActive = false;
+unsigned long ledOnTime = 0; // Para controlar el tiempo que el LED permanece encendido
+const long ledDuration = 1500; // El LED se mostrará por 1.5 segundos
 
 void setup() {
   Serial.begin(115200);
@@ -33,15 +26,15 @@ void setup() {
   digitalWrite(LED_ROJO, LOW);
   
   delay(500);
-  Serial.println("Sistema RFID y Panel Web listos.");
+  Serial.println("Sistema RFID y Panel Web listos (Lógica Centralizada).");
 }
-
 void loop() {
-  // === PARTE 1: ESCUCHAR COMANDOS DEL PANEL WEB ===
+  // ESCUCHAR COMANDOS DEL PANEL WEB ===
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
     command.trim();
 
+    // Comandos para encender/apagar LEDs directamente desde el panel
     if (command == "LED_RED_ON") {
       digitalWrite(LED_ROJO, HIGH);
       Serial.println("OK: LED Rojo Encendido.");
@@ -54,77 +47,65 @@ void loop() {
     } else if (command == "LED_GREEN_OFF") {
       digitalWrite(LED_VERDE, LOW);
       Serial.println("OK: LED Verde Apagado.");
-    } else if (command == "GET_STATUS") {
-      bool ledState = digitalRead(LED_ROJO);
-      String statusMessage = "Estado del sistema: OK | LED Rojo: ";
-      statusMessage += (ledState ? "ENCENDIDO" : "APAGADO");
-      ledState = digitalRead(LED_VERDE);
-      statusMessage += "\n OK | LED Verde: ";
-      statusMessage += (ledState ? "ENCENDIDO" : "APAGADO");
-      statusMessage += " | Usuario: " + savedUser;
-      Serial.println(statusMessage);
-    } else if (command == "ENROLL_START") {
-        enrollModeActive = true;
-        Serial.println("OK: Modo de enrolamiento activado. Esperando tarjeta...");
-    }
-    else if (command == "ENROLL_STOP") {
-        enrollModeActive = false;
-        Serial.println("OK: Modo de enrolamiento desactivado.");
-    } else if (command.startsWith("SAVE_USER:")) {
-      savedUser = command.substring(10);
-      Serial.println("OK: Usuario '" + savedUser + "' guardado.");
+    } else if (command == "ACCESS_GRANTED") {
+      digitalWrite(LED_VERDE, HIGH);
+      digitalWrite(LED_ROJO, LOW);
+      ledOnTime = millis(); // Inicia el temporizador para apagar el LED
+      Serial.println("OK: Accionando LED verde.");
     } 
-    else {
+    else if (command == "ACCESS_DENIED") {
+      digitalWrite(LED_ROJO, HIGH);
+      digitalWrite(LED_VERDE, LOW);
+      ledOnTime = millis(); // Inicia el temporizador para apagar el LED
+      Serial.println("OK: Accionando LED rojo.");
+    }
+    // Comandos de modo de enrolamiento
+    else if (command == "ENROLL_START") {
+      enrollModeActive = true;
+      Serial.println("OK: Modo de enrolamiento activado.");
+    } else if (command == "ENROLL_STOP") {
+      enrollModeActive = false;
+      Serial.println("OK: Modo de enrolamiento desactivado.");
+    } else {
       Serial.println("Error: Comando web no reconocido -> " + command);
     }
   }
 
-  // === PARTE 2: ESCANEAR TARJETAS RFID ===
+  // === ESCANEAR TARJETAS RFID ===
   if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
     String uidScannedStr = getUIDString(mfrc522.uid.uidByte, mfrc522.uid.size);
-    bool accesoPermitido = false;
-
-    for (int i = 0; i < NUM_TARJETAS_AUTORIZADAS; i++) {
-      if (compararUID(mfrc522.uid.uidByte, mfrc522.uid.size, UIDS_AUTORIZADOS[i])) {
-        accesoPermitido = true;
-        break;
-      }
-    }
-
+    
+    // Ya no se valida aquí. Simplemente se empaqueta y se envía.
     JsonDocument doc;
     doc["uid"] = uidScannedStr;
-    doc["origen"] = "RFID"; // Añadimos un campo para diferenciarlo de las respuestas del panel
-
-    if (accesoPermitido) {
-      doc["status"] = "PERMITIDO";
-      digitalWrite(LED_VERDE, HIGH);
-      digitalWrite(LED_ROJO, LOW);
-    } else {
-      doc["status"] = "DENEGADO";
-      digitalWrite(LED_VERDE, LOW);
-      digitalWrite(LED_ROJO, HIGH);
-    }
+    doc["origen"] = "RFID";
     
     serializeJson(doc, Serial);
     Serial.println();
-
-    // Pequeña pausa para mostrar el resultado en los LEDs.
-    // Reducido a 500ms para mantener el panel web responsivo.
-    delay(500); 
-    digitalWrite(LED_VERDE, LOW);
-    digitalWrite(LED_ROJO, LOW);
+    
+    // Pausa muy breve para evitar lecturas múltiples de la misma tarjeta
+    delay(250); 
     
     mfrc522.PICC_HaltA();
     mfrc522.PCD_StopCrypto1();
   }
   
+  // Si el temporizador del LED está activo, comprueba si ya pasó el tiempo
+  if (ledOnTime > 0 && millis() - ledOnTime > ledDuration) {
+    digitalWrite(LED_VERDE, LOW);
+    digitalWrite(LED_ROJO, LOW);
+    ledOnTime = 0; // Resetea el temporizador
+  }
+
+  // Lógica de parpadeo para el modo de enrolamiento
   if (enrollModeActive) {
-    // Hace que el LED amarillo parpadee lentamente
-    digitalWrite(LED_AMARILLO, millis() % 1000 < 500);
+    // Parpadea los LEDs para indicar que está esperando una tarjeta para enrolar
+    digitalWrite(LED_ROJO, millis() % 1000 < 500);
+    digitalWrite(LED_VERDE, millis() % 1000 < 500);
   }
 }
 
-// --- FUNCIONES AUXILIARES DE RFID (SIN CAMBIOS) ---
+// Función auxiliar para leer UID
 String getUIDString(byte uid[], byte size) {
   String result = "";
   for (byte i = 0; i < size; i++) {
@@ -134,11 +115,4 @@ String getUIDString(byte uid[], byte size) {
   }
   result.toUpperCase();
   return result;
-}
-
-bool compararUID(byte uidScanned[], byte sizeScanned, byte uidAutorizado[]) {
-  for (byte i = 0; i < sizeScanned; i++) {
-    if (uidScanned[i] != uidAutorizado[i]) return false;
-  }
-  return true;
 }
