@@ -20,6 +20,7 @@ byte UIDS_AUTORIZADOS[NUM_TARJETAS_AUTORIZADAS][LONGITUD_MAX_UID] = {
 
 // --- VARIABLES GLOBALES PARA EL PANEL WEB ---
 String savedUser = "Nadie";
+bool enrollModeActive = false;
 
 void setup() {
   Serial.begin(115200);
@@ -62,8 +63,14 @@ void loop() {
       statusMessage += (ledState ? "ENCENDIDO" : "APAGADO");
       statusMessage += " | Usuario: " + savedUser;
       Serial.println(statusMessage);
-    } 
-    else if (command.startsWith("SAVE_USER:")) {
+    } else if (command == "ENROLL_START") {
+        enrollModeActive = true;
+        Serial.println("OK: Modo de enrolamiento activado. Esperando tarjeta...");
+    }
+    else if (command == "ENROLL_STOP") {
+        enrollModeActive = false;
+        Serial.println("OK: Modo de enrolamiento desactivado.");
+    } else if (command.startsWith("SAVE_USER:")) {
       savedUser = command.substring(10);
       Serial.println("OK: Usuario '" + savedUser + "' guardado.");
     } 
@@ -109,6 +116,11 @@ void loop() {
     
     mfrc522.PICC_HaltA();
     mfrc522.PCD_StopCrypto1();
+  }
+  
+  if (enrollModeActive) {
+    // Hace que el LED amarillo parpadee lentamente
+    digitalWrite(LED_AMARILLO, millis() % 1000 < 500);
   }
 }
 
