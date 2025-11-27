@@ -13,6 +13,5 @@ Route::get('/', ConnectionTest::class);
 */
 
 // Route::get('/', fn () => View::make('panel'));
-Route::get('/', function () { 
-    return view('panel');
-});
+// Route::get('/', fn () => view('panel'));
+Route::get("/monitoreo", fn() => view("monitoreo"));
