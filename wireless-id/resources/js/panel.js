@@ -6,8 +6,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const output = document.getElementById('output');
     const usernameInput = document.getElementById('usernameInput');
     const themeToggle = document.getElementById('theme-toggle');
+    
+    const focoTurnOnButton = document.getElementById('foco-turn-on-btn');
+    const focoTurnOffButton = document.getElementById('foco-turn-off-btn');
+    const focoToggleAutoButton = document.getElementById('foco-toggle-auto-btn');
+    const thresholdInput = document.getElementById('threshold-input');
+    const setThresholdButton = document.getElementById('set-threshold-btn');
 
     // --- VARIABLES GLOBALES Y DE ESTADO ---
+    
+    let toggle_lamp = true; // Si está habilitada el foco actúa de acuerdo al sensor
+    
     let modoAsignacion = {
         activo: false,
         userId: null,
@@ -129,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
             logOutput("Buscando dispositivos Bluetooth LE...");
             
             const device = await navigator.bluetooth.requestDevice({
-                filters: [{ namePrefix: 'ESP32_Lector_RFID_BLE' }],
+                filters: [{ namePrefix: 'ESP32_Lector_RFID_BLE' }, { namePrefix: 'ESP32_Foco' }],
                 optionalServices: [BLE_SERVICE_UUID] // Solicita acceso al servicio BLE
             });
 
@@ -142,12 +151,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Obtiene las características por su UUID específico
             const rxCharacteristic = await service.getCharacteristic(BLE_CHAR_UUID_RX);
-            const txCharacteristic = await service.getCharacteristic(BLE_CHAR_UUID_TX);
 
+            try {
+                const txCharacteristic = await service.getCharacteristic(BLE_CHAR_UUID_TX); 
+                await txCharacteristic.startNotifications();
+                txCharacteristic.addEventListener('characteristicvaluechanged', handleBluetoothDataReceived);
+                logOutput("Característica TX (RFID) encontrada y suscrita.");
+            } catch (error) {
+                logOutput("Característica TX (RFID) no encontrada. Asumiendo modo Foco.");
+            }
+            
             connectionHandler.writer = rxCharacteristic; // Guardamos la característica para escribir
-
-            await txCharacteristic.startNotifications();
-            txCharacteristic.addEventListener('characteristicvaluechanged', handleBluetoothDataReceived);
             device.addEventListener('gattserverdisconnected', onBluetoothDisconnect);
 
             connectionHandler.isConnected = true;
@@ -296,6 +310,22 @@ document.addEventListener('DOMContentLoaded', () => {
             logOutput("❌ Error: No hay conexión. Conecta primero.");
         }
     }
+    
+    async function handleSetThreshold() {
+        const value = thresholdInput.value;
+        if (!value) {
+            alert("Por favor, introduce un valor para el umbral.");
+            return;
+        }
+        if (value < 0 || value > 4095) {
+            alert("El valor debe estar entre 0 y 4095.");
+            return;
+        }
+            
+        // Formatea el comando como lo espera el ESP32
+        const command = `set_threshold:${value}`;
+        sendCommand(command);
+    }
 
     function logOutput(message) {
         output.innerText += message + '\n';
@@ -309,25 +339,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- EVENT LISTENERS ---
-    connectSerialButton.addEventListener('click', connectSerial);
-    connectBtButton.addEventListener('click', connectBluetooth);
-    disconnectButton.addEventListener('click', () => connectionHandler.disconnect());
-
-    document.getElementById('led-green-on').addEventListener('click', () => sendCommand('LED_GREEN_ON'));
-    document.getElementById('led-green-off').addEventListener('click', () => sendCommand('LED_GREEN_OFF'));
-    document.getElementById('led-red-on').addEventListener('click', () => sendCommand('LED_RED_ON'));
-    document.getElementById('led-red-off').addEventListener('click', () => sendCommand('LED_RED_OFF'));
-    document.getElementById('create-user-btn').addEventListener('click', createUser);
-
-    themeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        const isDarkMode = document.body.classList.contains('dark-mode');
-        themeToggle.innerText = isDarkMode ? '🌙' : '☀️';
-        localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-    });
-
-    if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark-mode');
-        themeToggle.innerText = '🌙';
-    }
+        connectSerialButton.addEventListener('click', connectSerial);
+        connectBtButton.addEventListener('click', connectBluetooth);
+        disconnectButton.addEventListener('click', () => connectionHandler.disconnect());
+    
+        // --- Listeners para el Foco ---
+        // Usamos un 'if' para que no falle si los botones no existen
+        if (focoTurnOnButton) {
+            focoTurnOnButton.addEventListener('click', () => sendCommand('turn_on_lamp'));
+            focoTurnOffButton.addEventListener('click', () => sendCommand('turn_off_lamp'));
+            focoToggleAutoButton.addEventListener('click', () => sendCommand('toggle_switchable'));
+            setThresholdButton.addEventListener('click', handleSetThreshold);
+        }
+    
+        // --- Listeners para el RFID ---
+        // Usamos 'if' para que no falle si los botones no existen
+        const ledGreenOnButton = document.getElementById('led-green-on');
+        if (ledGreenOnButton) {
+            ledGreenOnButton.addEventListener('click', () => sendCommand('LED_GREEN_ON'));
+            document.getElementById('led-green-off').addEventListener('click', () => sendCommand('LED_GREEN_OFF'));
+            document.getElementById('led-red-on').addEventListener('click', () => sendCommand('LED_RED_ON'));
+            document.getElementById('led-red-off').addEventListener('click', () => sendCommand('LED_RED_OFF'));
+            document.getElementById('create-user-btn').addEventListener('click', createUser);
+        }
+    
+        // --- Listener del Tema ---
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            themeToggle.innerText = isDarkMode ? '🌙' : '☀️';
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        });
+    
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            themeToggle.innerText = '🌙';
+        }
 });

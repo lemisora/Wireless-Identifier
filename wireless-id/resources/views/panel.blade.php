@@ -27,6 +27,29 @@
       <button id="disconnect-btn" style="display:none;">Desconectar</button>
     </div>
   </div>
+  
+  <div class="card">
+        <div class="card-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y1="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y1="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y1="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y1="4.22"></line></svg>
+            Control del Foco
+        </div>
+        
+        <div class="card-subtitle">Control Manual</div>
+        <div class="button-group">
+            <button id="foco-turn-on-btn">Encender Foco (Manual)</button>
+            <button id="foco-turn-off-btn">Apagar Foco (Manual)</button>
+        </div>
+  
+        <div class="card-subtitle">Control Automático</div>
+        <div class="button-group">
+            <button id="foco-toggle-auto-btn">Activar/Desactivar Modo Automático</button>
+        </div>
+        <div class="input-group">
+            <input type="number" id="threshold-input" placeholder="Umbral LDR (ej: 500)" min="0" max="4095">
+            <button id="set-threshold-btn">Fijar Umbral</button>
+        </div>
+    </div>
+  
   <div class="card">
     <div class="card-title">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-cpu"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><path d="M15 2v2"></path><path d="M15 20v2"></path><path d="M2 15h2"></path><path d="M20 15h2"></path><path d="M15 2h2"></path><path d="M15 20h2"></path><path d="M2 15h2"></path><path d="M20 15h2"></path></svg>
